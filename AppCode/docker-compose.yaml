@@ -1,0 +1,161 @@
+version: '3.8'
+
+name: istea-parcial
+
+services:
+  istea-api:
+    container_name: istea-api
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: istea-api
+    entrypoint: /bin/bash -c 'flask run --host 0.0.0.0 --port 80 --debug'
+    ports:
+      - 80:80
+    volumes:
+      - ./api/src:/app
+    environment:
+      MONGO_USER: root
+      MONGO_PASS: example
+      MONGO_HOST: istea-mongodb
+      MONGO_DB: istea
+      MONGO_COLLECTION: examen
+      REDIS_PASS: YjtfdLD6arl3rL3h
+      REDIS_HOST: istea-redis
+    healthcheck:
+      test: ["CMD", "wget", "--tries=1", "--spider", "http://localhost:80/tech"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    depends_on:
+      - istea-worker-redis
+    networks:
+      - istea-network
+    stdin_open: true
+    tty: true
+
+  istea-worker-redis:
+    container_name: istea-worker-redis
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      target: istea-worker-redis
+    entrypoint: /bin/bash -c 'python3 __init__.py initRedis'
+    environment:
+      MONGO_USER: root
+      MONGO_PASS: example
+      MONGO_HOST: istea-mongodb
+      MONGO_DB: istea
+      MONGO_COLLECTION: examen
+      REDIS_PASS: YjtfdLD6arl3rL3h
+      REDIS_HOST: istea-redis
+    restart: no
+    volumes:
+      - ./worker/src:/app
+    depends_on:
+      - istea-redis
+    networks:
+      - istea-network
+    stdin_open: true
+    tty: true
+
+  istea-worker-mongo:
+    container_name: istea-worker-mongo
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      target: istea-worker-mongo
+    entrypoint: /bin/bash -c 'python3 __init__.py initMongo'
+    environment:
+      MONGO_USER: root
+      MONGO_PASS: example
+      MONGO_HOST: istea-mongodb
+      MONGO_DB: istea
+      MONGO_COLLECTION: examen
+      REDIS_PASS: YjtfdLD6arl3rL3h
+      REDIS_HOST: istea-redis
+    restart: no
+    volumes:
+      - ./worker/src:/app
+    depends_on:
+      - istea-mongodb
+    networks:
+      - istea-network
+    stdin_open: true
+    tty: true
+
+  istea-redis:
+    container_name: istea-redis
+    image: redis:alpine
+    environment:
+      MONGO_USER: root
+      MONGO_PASS: example
+      MONGO_HOST: istea-mongodb
+      MONGO_DB: istea
+      MONGO_COLLECTION: examen
+      REDIS_PASS: YjtfdLD6arl3rL3h
+      REDIS_HOST: istea-redis
+      REDIS_REPLICATION_MODE: master
+      REDIS_PASSWORD: YjtfdLD6arl3rL3h
+    volumes:
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - istea-network
+    stdin_open: true
+    tty: true
+
+  istea-mongodb:
+    container_name: istea-mongodb
+    image: mongo
+    environment:
+      MONGO_USER: root
+      MONGO_PASS: example
+      MONGO_HOST: istea-mongodb
+      MONGO_DB: istea
+      MONGO_COLLECTION: examen
+      REDIS_PASS: YjtfdLD6arl3rL3h
+      REDIS_HOST: istea-redis
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    healthcheck:
+      test: ["CMD","mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - istea-network
+    stdin_open: true
+    tty: true
+
+  istea-mongoui:
+    container_name: istea-mongoui
+    image: mongo-express
+    environment:
+      MONGO_USER: root
+      MONGO_PASS: example
+      MONGO_HOST: istea-mongodb
+      MONGO_DB: istea
+      MONGO_COLLECTION: examen
+      REDIS_PASS: YjtfdLD6arl3rL3h
+      REDIS_HOST: istea-redis
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: example
+      ME_CONFIG_MONGODB_SERVER: istea-mongodb
+      ME_CONFIG_MONGODB_URL: mongodb://root:example@istea-mongodb:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: "admin"
+      ME_CONFIG_BASICAUTH_PASSWORD: "password"
+    depends_on:
+      - istea-mongodb
+    networks:
+      - istea-network
+    stdin_open: true
+    tty: true
+      
+networks:
+  istea-network:
+    name: istea-1-network

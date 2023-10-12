@@ -1,147 +1,207 @@
+##############################################################################################
+####################################### Docker Compose #######################################
+##############################################################################################
+
+# En el siguiente archivo se encuentra la configuración de Docker Compose para el proyecto.
+# Se definen los servicios que se utilizarán, las redes a las que estarán conectados y las
+# dependencias entre los servicios.
+# Se encuentra documentado los pasos a seguir para la configuración de Docker Compose con 
+# su resectiva explicación de que función cumple cada parte del archivo.
+
+# Version de Docker Compose a utilizar
 version: '3.8'
 
+# Nombre del proyecto
 name: istea-parcial
 
+# Servicios
 services:
+
+  # Servicio para la API
   istea-api:
+    # Nombre del contenedor
     container_name: istea-api
+    # Construccion de la imagen del contenedor a partir del Dockerfile
     build:
       context: .
       dockerfile: Dockerfile
-      target: istea-api
+      target: base
+    # Entrypoint con comando de entrada para ejecutar la aplicación Flask
     entrypoint: /bin/bash -c 'flask run --host 0.0.0.0 --port 80 --debug'
+    # Mapea el puerto 80 del contenedor al puerto host (En este caso el 80)
     ports:
       - 80:80
+    # Monta el directorio de la aplicación en el contenedor
     volumes:
       - ./api/src:/app
+    # Variables de entorno para la conexión a la base de datos y Redis
     environment:
       MONGO_USER: root
       MONGO_PASS: example
       MONGO_HOST: istea-mongodb
       MONGO_DB: istea
       MONGO_COLLECTION: examen
-      REDIS_PASS: YjtfdLD6arl3rL3h
+      REDIS_PASS: ${REDIS_PASS}
       REDIS_HOST: istea-redis
+    # Comprobacion del estado de la aplicacion con un healthcheck
     healthcheck:
       test: ["CMD", "wget", "--tries=1", "--spider", "http://localhost:80/tech"]
       interval: 30s
       timeout: 10s
       retries: 5
+    # Dependencias del servicio
     depends_on:
       - istea-worker-redis
+    # Red a la que está conectado el servicio
     networks:
       - istea-network
-    stdin_open: true
+    # Se encarga de que se mantenga el contenedor en ejecución
     tty: true
 
+  # Servicio para el worker de Redis
   istea-worker-redis:
+    # Nombre del contenedor
     container_name: istea-worker-redis
+    # Construccion de la imagen del contenedor a partir del Dockerfile
     build: 
       context: .
       dockerfile: Dockerfile
-      target: istea-worker-redis
+      target: base
+    # Entrypoint con comando de entrada para inicializar Redis
     entrypoint: /bin/bash -c 'python3 __init__.py initRedis'
+    # Variables de entorno para la conexión a la base de datos y Redis
     environment:
       MONGO_USER: root
       MONGO_PASS: example
       MONGO_HOST: istea-mongodb
       MONGO_DB: istea
       MONGO_COLLECTION: examen
-      REDIS_PASS: YjtfdLD6arl3rL3h
+      REDIS_PASS: ${REDIS_PASS}
       REDIS_HOST: istea-redis
+    # Colocar para que No reinicie el contenedor automáticamente
     restart: no
+    # Monta el directorio del worker en el contenedor
     volumes:
       - ./worker/src:/app
+    # Dependencias del servicio y condición para que se ejecute
     depends_on:
       - istea-redis
+    # Red a la que está conectado el servicio
     networks:
       - istea-network
-    stdin_open: true
-    tty: true
 
+  # Servicio para el worker de Mongo
   istea-worker-mongo:
+    # Nombre del contenedor
     container_name: istea-worker-mongo
+    # Construccion de la imagen del contenedor a partir del Dockerfile
     build: 
       context: .
       dockerfile: Dockerfile
-      target: istea-worker-mongo
+      target: base
+    # Entrypoint con comando de entrada para inicializar MongoDB
     entrypoint: /bin/bash -c 'python3 __init__.py initMongo'
+    # Variables de entorno para la conexión a la base de datos y Redis
     environment:
       MONGO_USER: root
       MONGO_PASS: example
       MONGO_HOST: istea-mongodb
       MONGO_DB: istea
       MONGO_COLLECTION: examen
-      REDIS_PASS: YjtfdLD6arl3rL3h
+      REDIS_PASS: ${REDIS_PASS}
       REDIS_HOST: istea-redis
+    # Colocar para que No reinicie el contenedor automáticamente
     restart: no
+    # Monta el directorio del worker en el contenedor
     volumes:
       - ./worker/src:/app
+    # Dependencias del servicio
     depends_on:
       - istea-mongodb
+    # Red a la que está conectado el servicio
     networks:
       - istea-network
-    stdin_open: true
-    tty: true
 
+  # Servicio para Redis
   istea-redis:
+    # Nombre del contenedor
     container_name: istea-redis
+    # Imagen de Docker para Redis
     image: redis:alpine
+    # Comando de entrada para ejecutar Redis con el archivo de configuración
+    command: redis-server /usr/local/etc/redis/redis.conf
+    # Variables de entorno para la conexión a la base de datos y Redis
     environment:
       MONGO_USER: root
       MONGO_PASS: example
       MONGO_HOST: istea-mongodb
       MONGO_DB: istea
       MONGO_COLLECTION: examen
-      REDIS_PASS: YjtfdLD6arl3rL3h
+      REDIS_PASS: ${REDIS_PASS}
       REDIS_HOST: istea-redis
       REDIS_REPLICATION_MODE: master
-      REDIS_PASSWORD: YjtfdLD6arl3rL3h
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    # Monta el archivo de configuración de Redis en el contenedor
     volumes:
       - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    # Comprobacion del estado de la aplicacion con un healthcheck para Redis
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping"]
       interval: 30s
       timeout: 10s
       retries: 5
+    # Red a la que está conectado el servicio
     networks:
       - istea-network
-    stdin_open: true
+    # Se encarga de que se mantenga el contenedor en ejecución
     tty: true
 
+  # Servicio para MongoDB
   istea-mongodb:
+    # Nombre del contenedor
     container_name: istea-mongodb
+    # Imagen de Docker para MongoDB
     image: mongo
+    # Variables de entorno para la conexión a la base de datos y Redis
     environment:
       MONGO_USER: root
       MONGO_PASS: example
       MONGO_HOST: istea-mongodb
       MONGO_DB: istea
       MONGO_COLLECTION: examen
-      REDIS_PASS: YjtfdLD6arl3rL3h
+      REDIS_PASS: ${REDIS_PASS}
       REDIS_HOST: istea-redis
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: example
+    # Comprobacion del estado de la aplicacion con un healthcheck para MongoDB
     healthcheck:
       test: ["CMD","mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 30s
       timeout: 10s
       retries: 5
+    # Red a la que está conectado el servicio
     networks:
       - istea-network
-    stdin_open: true
+    # Se encarga de que se mantenga el contenedor en ejecución
     tty: true
 
+  # Servicio para Mongo Express
   istea-mongoui:
+    # Nombre del contenedor
     container_name: istea-mongoui
+    # Imagen de Docker para Mongo Express
     image: mongo-express
+    # Mapea el puerto 8081 del contenedor al puerto 8081 del host
+    ports:
+      - 8081:8081
+    # Variables de entorno para la conexión a la base de datos y Redis
     environment:
       MONGO_USER: root
       MONGO_PASS: example
       MONGO_HOST: istea-mongodb
       MONGO_DB: istea
       MONGO_COLLECTION: examen
-      REDIS_PASS: YjtfdLD6arl3rL3h
+      REDIS_PASS: ${REDIS_PASS}
       REDIS_HOST: istea-redis
       ME_CONFIG_MONGODB_ADMINUSERNAME: root
       ME_CONFIG_MONGODB_ADMINPASSWORD: example
@@ -149,13 +209,17 @@ services:
       ME_CONFIG_MONGODB_URL: mongodb://root:example@istea-mongodb:27017/
       ME_CONFIG_BASICAUTH_USERNAME: "admin"
       ME_CONFIG_BASICAUTH_PASSWORD: "password"
+    # Dependencias del servicio
     depends_on:
       - istea-mongodb
+    # Red a la que está conectado el servicio
     networks:
       - istea-network
-    stdin_open: true
+    # Se encarga de que se mantenga el contenedor en ejecución
     tty: true
-      
+
+# Creación de la red para los servicios y para que estos se interconecten a través de ella
 networks:
   istea-network:
+    # Nombre de la red
     name: istea-1-network

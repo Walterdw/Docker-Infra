@@ -1,0 +1,37 @@
+Documentación de los pasos a seguir: 
+
+- Se encuentra redactado dentro del Dockerfile y el docker-compose.yml, explicado de la mejor manera posible
+cada seccion de los mismos.
+
+
+Posibles mejoras:
+
+- Colocar las variables de entorno en el archivo .env para compartirlos entre los contenedores, de la misma 
+manera que se encuentran las contraseñas de redis, tambien se las podria cifrar para una mayor seguridad.
+
+- Eliminar el istea-redis del Dockerfile ya que no se utiliza en el docker-compose.yml, se encuentra unicamente
+con fines de cumplir los requerimientos del examen.
+
+- Hacer diferentes init.sh para la comprobacion de los servicios, ya que se puede hacer de una manera mas
+eficiente.
+
+- Definir los recursos de los que pueden disponer los contenedores para un mayor control de los mismos y 
+evitar que se queden sin recursos y/o que utilicen mas de los que deberian.
+
+
+Pasos para levantar el docker compose y su respectiva comprobación:
+
+- Clonar el repositorio o descargar el archivo comprimido
+- Ejecutar el comando docker-compose up -d
+- Comprobar que los contenedores se encuentran levantados con el comando docker ps
+- Comprobar que los servicios se encuentran funcionando con el comando docker logs <nombre del contenedor>
+o comprobar todos a la vez con docker compose logs
+- Comprobar con las pruebas de la seccion de Datos Importantes del examen:
+
+a) Se puede probar el servicio de api ingresando en localhost:80/tech y debería mostrar un mensaje diciendo "Ok"
+b) Se puede probar la conexión de api con redis ingresando en localhost:80/tech/redis y debería mostrar un mensaje
+diciendo las credenciales de mongodb
+c) Se puede probar la conexión de api con mongo ingresando en localhost:80/tech/mongo y debería mostrar los 
+resultados de la tabla istea.examen de documentdb
+d) Se puede utilizar el contenedor Istea-mongogui para conectarse a traves de localhost:8081 y de esta manera
+ver si se crearon las bases de datos y los documentos correspondientes en mongodb
